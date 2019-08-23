@@ -6,4 +6,4 @@ COPY . .
 
 RUN cargo install --path .
 
-CMD ["bleep_server"]
+ENTRYPOINT ["bleep_server", "8000"]

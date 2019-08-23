@@ -6,12 +6,13 @@ use actix_web::HttpResponse;
 use actix_web::Responder;
 use rand;
 
-pub const LOCAL_IP: &str = "127.0.0.1";
+pub const LOCAL_IP: &str = "0.0.0.0";
 pub const ROOT_GET_RESPONSE: &str = "Hello world!";
 
 fn main() {
     let arg = std::env::args().nth(1);
     let port = if let Some(p) = arg {
+        println!("port argument given: {}", p);
         let port_try = p.parse::<usize>();
         if let Ok(p) = port_try {
             if p < 65536 {
@@ -29,7 +30,7 @@ fn main() {
     let binding = format!["{}:{}", LOCAL_IP, port];
 
     println!("Starting server on {} ...", binding);
-    server::new(|| {
+    if let Ok(s) = server::new(|| {
         vec![
             App::new()
                 .prefix("/random")
@@ -42,8 +43,12 @@ fn main() {
         ]
     })
     .bind(binding)
-    .unwrap()
-    .run();
+    {
+        println!("binding successful");
+        s.run();
+    } else {
+        println!("could not resolve binding");
+    }
     println!("Goodbye!");
 }
 
