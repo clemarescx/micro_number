@@ -11,21 +11,10 @@ pub const ROOT_GET_RESPONSE: &str = "Hello world!";
 
 fn main() {
     let arg = std::env::args().nth(1);
-    let port = if let Some(p) = arg {
-        println!("port argument given: {}", p);
-        let port_try = p.parse::<usize>();
-        if let Ok(p) = port_try {
-            if p < 65536 {
-                format!["{}", p]
-            } else {
-                String::from("8080")
-            }
-        } else {
-            String::from("8080")
-        }
-    } else {
-        String::from("8080")
-    };
+    let port = arg
+        .and_then(|p| p.parse::<u16>().ok().map(|p| p.to_string()))
+        .unwrap_or_else(|| String::from("8080"));
+    println!("{}", port);
 
     let binding = format!["{}:{}", LOCAL_IP, port];
 
