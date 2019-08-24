@@ -1,9 +1,4 @@
-use actix_web::http::Method;
-use actix_web::server;
-use actix_web::App;
-use actix_web::HttpRequest;
-use actix_web::HttpResponse;
-use actix_web::Responder;
+use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use rand;
 
 pub const LOCAL_IP: &str = "0.0.0.0";
@@ -19,30 +14,60 @@ fn main() {
     let binding = format!["{}:{}", LOCAL_IP, port];
 
     println!("Starting server on {} ...", binding);
-    if let Ok(s) = server::new(|| {
-        vec![
-            App::new()
-                .prefix("/random")
-                .resource("/", |r| r.method(Method::GET).f(positive))
-                .finish(),
-            App::new()
-                .prefix("/negative")
-                .resource("/", |r| r.method(Method::GET).f(negative))
-                .finish(),
-        ]
+    let sys = actix::System::new("Bleep server");
+
+    let server = HttpServer::new(|| {
+        App::new()
+            .service(web::scope("/random").route("/", web::get().to(positive)))
+            .service(web::scope("/negative").route("/", web::get().to(negative)))
+            .service(web::scope("/prime").route("/{number}", web::get().to(prime)))
+            .route("/", web::to(|| HttpResponse::Ok().body("Bleep!")))
     })
-    .bind(binding)
-    {
+    .bind(binding);
+    if let Ok(s) = server {
         println!("binding successful");
-        s.run();
+        s.start();
+        let _ = sys.run();
     } else {
         println!("could not resolve binding");
     }
+
     println!("Goodbye!");
 }
 
-fn positive(req: &HttpRequest) -> impl Responder {
-    println!("Request received: {:?}", req);
+fn is_prime(candidate: u32) -> bool {
+    match candidate {
+        x if x <= 3 => x > 1,
+        x if x % 2 == 0 || x % 3 == 0 => false,
+        n => {
+            let mut i = 5;
+            while i * i <= n {
+                if n % i == 0 || n % (i + 2) == 0 {
+                    return false;
+                }
+                i += 1;
+            }
+            true
+        }
+    }
+}
+
+fn prime(params: HttpRequest) -> impl Responder {
+    println!("Prime check request received: {:?}", params );
+    let candidate = params
+        .match_info()
+        .get("number")
+        .and_then(|n| n.parse::<u32>().ok())
+        .expect("Could not parse requested number");
+    if is_prime(candidate) {
+        format!["{} is prime!", candidate]
+    } else {
+        format!["Nope, {} is not prime.", candidate]
+    }
+}
+
+fn positive() -> impl Responder {
+    println!("Request for positive random number");
     let r = rand::random::<u8>();
     let r = format!("{}", r);
 
@@ -50,8 +75,8 @@ fn positive(req: &HttpRequest) -> impl Responder {
     HttpResponse::Ok().body(r)
 }
 
-fn negative(req: &HttpRequest) -> impl Responder {
-    println!("Request received: {:?}", req);
+fn negative() -> impl Responder {
+    println!("Request for negative random number");
     let r = rand::random::<u8>();
     let r = format!("-{}", r);
 
