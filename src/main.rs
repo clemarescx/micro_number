@@ -35,7 +35,7 @@ fn main() {
     println!("Goodbye!");
 }
 
-fn is_prime(candidate: u32) -> bool {
+fn is_prime(candidate: u64) -> bool {
     match candidate {
         x if x <= 3 => x > 1,
         x if x % 2 == 0 || x % 3 == 0 => false,
@@ -53,17 +53,27 @@ fn is_prime(candidate: u32) -> bool {
 }
 
 fn prime(params: HttpRequest) -> impl Responder {
-    println!("Prime check request received: {:?}", params );
+    println!("Prime check request received: {:?}", params);
     let candidate = params
         .match_info()
         .get("number")
-        .and_then(|n| n.parse::<u32>().ok())
+        .and_then(|n| n.parse::<u64>().ok())
         .expect("Could not parse requested number");
-    if is_prime(candidate) {
-        format!["{} is prime!", candidate]
+
+    use std::time::SystemTime;
+    let start = SystemTime::now();
+    let is_prime = is_prime(candidate);
+    let dur = start.elapsed().unwrap();
+    let ret = if is_prime {
+        format!["{} is prime! ", candidate]
     } else {
         format!["Nope, {} is not prime.", candidate]
-    }
+    };
+    format![
+        "{}\nCheck duration: {} secs",
+        ret,
+        dur.as_millis() as f64 / 1000.0
+    ]
 }
 
 fn positive() -> impl Responder {
